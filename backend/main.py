@@ -3,10 +3,32 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import Base, engine, SessionLocal
 import schemas, crud, models
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi import Request
+
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+
+    # get first validation error
+    first_error = errors[0]
+    field = first_error["loc"][-1]
+    message = first_error["msg"]
+
+    return JSONResponse(
+        status_code=400,
+        content={
+            "success": False,
+            "message": f"{field} - {message}"
+        }
+    )
+
 
 @app.get("/")
 def root():
